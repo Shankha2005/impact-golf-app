@@ -21,12 +21,42 @@ export async function POST(request: Request) {
   }
 
   const supabase = createAdminClient();
-  const subscription = event.data.object as Stripe.Subscription;
 
   switch (event.type) {
+    case 'checkout.session.completed': {
+      const session = event.data.object as Stripe.Checkout.Session;
+      if (session.mode !== 'subscription') break;
+
+      const subRef = session.subscription;
+      if (!subRef) break;
+
+      const userId = session.metadata?.user_id;
+      const plan = session.metadata?.plan === 'yearly' ? 'yearly' : 'monthly';
+      if (!userId) break;
+
+      const subId = typeof subRef === 'string' ? subRef : subRef.id;
+      const fullSub = await stripe.subscriptions.retrieve(subId);
+
+      await supabase.from('subscriptions').upsert(
+        {
+          user_id: userId,
+          stripe_subscription_id: fullSub.id,
+          stripe_customer_id:
+            typeof fullSub.customer === 'string' ? fullSub.customer : fullSub.customer.id,
+          status: fullSub.status,
+          plan,
+          current_period_end: new Date(fullSub.current_period_end * 1000).toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' }
+      );
+      break;
+    }
+
     case 'customer.subscription.created': {
+      const subscription = event.data.object as Stripe.Subscription;
       const userId = subscription.metadata?.user_id;
-      const plan = subscription.metadata?.plan || 'monthly';
+      const plan = subscription.metadata?.plan === 'yearly' ? 'yearly' : 'monthly';
       if (!userId) break;
 
       await supabase.from('subscriptions').upsert(
@@ -46,14 +76,19 @@ export async function POST(request: Request) {
 
     case 'customer.subscription.updated':
     case 'customer.subscription.deleted': {
+      const subscription = event.data.object as Stripe.Subscription;
       const status =
         event.type === 'customer.subscription.deleted' ? 'canceled' : subscription.status;
+
+      const periodEnd = subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000).toISOString()
+        : new Date().toISOString();
 
       await supabase
         .from('subscriptions')
         .update({
           status,
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          current_period_end: periodEnd,
           updated_at: new Date().toISOString(),
         })
         .eq('stripe_subscription_id', subscription.id);
