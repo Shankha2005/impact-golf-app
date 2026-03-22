@@ -1,69 +1,77 @@
-# Golf Charity Subscription Platform
+# Impact Golf - Charity Subscription Platform
 
-Next.js 14 + Supabase + Stripe. PRD-aligned: scores, draws, charities, winner proof upload, admin tools.
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-Database_&_Auth-3ECF8E?logo=supabase)](https://supabase.com/)
+[![Stripe](https://img.shields.io/badge/Stripe-Payments-008CDD?logo=stripe)](https://stripe.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-Styling-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
 
-## Deploy to Vercel
+**Live Production URL:** https://impact-golf-app.vercel.app/
 
-1. Push this repo to GitHub **without** `node_modules`, `.next`, or `.env.local` (see `.gitignore`).
-2. Import the repo in [Vercel](https://vercel.com) and add the same env vars as local (Supabase URL/keys, Stripe, etc.).
-3. Build command: `npm run build` (default).
+## 📌 Project Overview
+Impact Golf is a modern, emotion-driven web application combining golf performance tracking, automated monthly prize draws, and charitable giving. Designed specifically to avoid traditional "golf clichés," the platform focuses on community impact, user engagement, and seamless subscription management.
 
-## Environment
+This project was built as a submission for the **Digital Heroes Full-Stack Development Trainee Selection Process**.
 
-Copy `.env.example` → `.env.local` and fill real values (Supabase, Stripe). See project docs / PRD for full list.
+## 🚀 Core Architecture & Features
 
-## Supabase setup
+### 1. Subscription & Payment Engine
+* **Gateway:** Fully integrated Stripe checkout for PCI-compliant payment processing.
+* **Plans:** Supports both Monthly and discounted Yearly billing cycles.
+* **Webhook Architecture:** Utilizes robust Stripe webhooks (`customer.subscription.created`, `updated`, `deleted`) to securely sync subscription states to the database using Supabase Service Role keys, preventing silent failures.
+* **Access Control:** Middleware and Row Level Security (RLS) enforce strict access boundaries for non-subscribers.
 
-Run migrations in order in the SQL Editor:
+### 2. Algorithmic Draw & Reward System
+* **Mathematical Precision:** Automates the PRD's exact prize pool logic (40% for 5-match, 35% for 4-match, 25% for 3-match).
+* **Jackpot Logic:** Successfully calculates and carries forward unclaimed 5-match jackpots to the following month's pool.
+* **Simulation Mode:** Provides an admin-exclusive "test run" feature to simulate draw outcomes and preview prize distributions before publishing official results.
 
-1. `supabase/migrations/0001_schema.sql`
-2. `supabase/migrations/0002_full_schema.sql`
-3. `supabase/migrations/0003_fix_profile_trigger_and_scores_rls.sql`
-4. `supabase/migrations/0004_scores_ensure_date_played.sql` (if you see PGRST204 on `date_played`)
-5. `supabase/seed.sql` (charities)
+### 3. "Rule of 5" Score Management
+* **Strict Constraints:** Validates all user inputs to strictly adhere to the Stableford format (1-45 points).
+* **Rolling Data Structure:** Engineered a self-pruning database logic. Upon a user's 6th score entry, the system automatically overwrites the oldest record, ensuring only the 5 most recent scores are retained and displayed in reverse chronological order.
 
-Create Storage bucket **`proofs`** (set **Public** so proof links open in the browser). Run **`supabase/migrations/0005_storage_proofs.sql`** so authenticated users can upload.
+### 4. Charity Integration & UI/UX
+* **Dynamic Contributions:** Enforces a hard minimum of 10% charity contribution per user, while empowering users with a custom slider to voluntarily increase their impact.
+* **Modern Aesthetic:** Built with a mobile-first philosophy using Tailwind CSS. Features smooth micro-interactions, defensive error boundaries, and a clean interface that prioritizes charitable impact over traditional sports imagery.
 
-**Winner proofs:** saving `proof_url` uses **`SUPABASE_SERVICE_ROLE_KEY`** on the server (local `.env.local` and **Vercel env**). Without it, uploads appear to work in the UI but **do not persist** after refresh.
+---
 
-Enable **Email** auth.
+## 🛠️ Tech Stack & Implementation Details
 
-### Admin user
+* **Framework:** Next.js (App Router, Server Components, Server Actions)
+* **Database & Auth:** Supabase (PostgreSQL, Row Level Security, Triggers)
+* **Payments:** Stripe (Checkout Sessions, Webhooks)
+* **Styling:** Tailwind CSS
+* **Deployment:** Vercel
 
-Everyone signs up at `/auth/signup` as a subscriber. Promote an account:
+### Defensive Programming Highlights
+To ensure zero-downtime and prevent "Null Data" digest crashes for new users, the application utilizes strict Server Component auditing, optional chaining, and `force-dynamic` rendering. All database calls are wrapped in `try/catch` blocks with safe UI fallbacks to handle sparse initial data states gracefully.
 
-```sql
-UPDATE public.profiles SET role = 'admin' WHERE email = 'you@example.com';
-```
+---
 
-Sign out and sign in again. **Admins** are sent to **`/admin`** automatically after login; the nav also shows **Admin** + **Member area**.
+## 👨‍💻 Evaluator Testing Guide
 
-## Where things live (PRD)
+To test the full capability of the platform, please follow these steps:
 
-| Feature | Location |
-|--------|----------|
-| **Upload proof (subscriber)** | Logged in → **Member area** → sidebar **Winnings & upload proof** (`/dashboard/winnings`). Upload appears when you have a win with status *pending* and no proof yet. |
-| **Review proof (admin)** | **`/admin/winners`** — **Winners & proof review**. Open **View** on the proof, then **Approve** / **Reject** (only when proof exists + pending). |
-| **Draws / charities / users** | Other items in the **Admin** sidebar. |
+1. **User Flow:** Sign up, select a charity, and complete a test Stripe checkout.
+2. **Score Logic:** Enter 6 distinct golf scores to verify that the oldest score is automatically dropped.
+3. **Admin Flow:** Log in with Admin credentials to access the hidden `/admin` dashboard.
+4. **Draw Simulation:** In the Admin Panel, run a "Simulation Draw" to verify the prize pool math before officially publishing.
+5. **Mobile Responsiveness:** View the user dashboard on a mobile viewport to verify the responsive sidebar and layout constraints.
 
-### Winner amounts show $0.00
+## ⚙️ Local Setup Instructions
 
-Prize money is **not** automatic: on **Admin → Draw Management**, **Total Prize Pool ($)** must be **greater than 0** when you click **Publish Official Draw**. The app splits it **40% / 35% / 25%** across 5 / 4 / 3-match tiers and divides each tier among winners in that tier.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Shankha2005/impact-golf-app
 
-- **New draws:** enter e.g. `10000` before publishing (the API now rejects `$0` publishes).
-- **Already-published draw with $0 winners:** In Supabase, check **`draws`** for `pool_5_match`, `pool_4_match`, `pool_3_match`. If those are `0`, update that draw row with the correct pool dollars, then run **`supabase/scripts/recalc_winner_amounts.sql`** in the SQL Editor.
+2. Install dependencies: npm install
+3. Set up Environment Variables. Create a .env.local file with the following keys:
+    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+    SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+    STRIPE_SECRET_KEY=your_stripe_secret
+    STRIPE_WEBHOOK_SECRET=your_webhook_secret
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+4. Run the development server: npm run dev
 
-## Local dev
-
-```bash
-npm install
-npm run dev
-```
-
-Use `npm run clean` to remove `.next` before a fresh build.
-
-## Removed / unused
-
-- Unused API route `POST /api/auth/login` (login uses the Supabase client in the browser).
-- Unused `services/score-manager.ts`.
-- Unused deps: `framer-motion`, `zod` (re-add if you use them later).
+Developed by Shankhadeep Das
