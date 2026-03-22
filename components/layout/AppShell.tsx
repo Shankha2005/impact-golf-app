@@ -2,13 +2,45 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Menu, X } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import {
+  Menu,
+  X,
+  LayoutDashboard,
+  UserCircle,
+  Flag,
+  Trophy,
+  Shield,
+  ArrowLeft,
+  Gift,
+  Users,
+  HeartHandshake,
+  Award,
+  type LucideIcon,
+} from 'lucide-react';
+
+/**
+ * Icon keys only — Server Components must not pass Lucide components as props (not serializable).
+ */
+const NAV_ICONS = {
+  summary: LayoutDashboard,
+  profile: UserCircle,
+  scores: Flag,
+  winnings: Trophy,
+  'admin-panel': Shield,
+  back: ArrowLeft,
+  analytics: LayoutDashboard,
+  draws: Gift,
+  users: Users,
+  charities: HeartHandshake,
+  winners: Award,
+} as const satisfies Record<string, LucideIcon>;
+
+export type AppShellIconKey = keyof typeof NAV_ICONS;
 
 export type AppShellNavItem = {
   href: string;
   label: string;
-  icon: LucideIcon;
+  icon: AppShellIconKey;
   className?: string;
 };
 
@@ -78,7 +110,7 @@ export function AppShell({
           onClick={() => setOpen(false)}
         >
           {navItems.map((item) => {
-            const Icon = item.icon;
+            const Icon = NAV_ICONS[item.icon] ?? LayoutDashboard;
             return (
               <Link
                 key={`${item.href}-${item.label}`}

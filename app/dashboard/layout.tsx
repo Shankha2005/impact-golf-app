@@ -1,4 +1,3 @@
-import { LayoutDashboard, UserCircle, Flag, Trophy, Shield } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { AppShell, type AppShellNavItem } from '@/components/layout/AppShell';
 
@@ -26,17 +25,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   const navItems: AppShellNavItem[] = [
-    { href: '/dashboard', label: 'Summary', icon: LayoutDashboard },
-    { href: '/dashboard/profile', label: 'Profile & Subscription', icon: UserCircle },
-    { href: '/dashboard/scores', label: 'My Scores', icon: Flag },
-    { href: '/dashboard/winnings', label: 'Winnings & upload proof', icon: Trophy },
+    { href: '/dashboard', label: 'Summary', icon: 'summary' },
+    { href: '/dashboard/profile', label: 'Profile & Subscription', icon: 'profile' },
+    { href: '/dashboard/scores', label: 'My Scores', icon: 'scores' },
+    { href: '/dashboard/winnings', label: 'Winnings & upload proof', icon: 'winnings' },
   ];
 
   if (isAdmin) {
     navItems.push({
       href: '/admin',
       label: 'Admin panel',
-      icon: Shield,
+      icon: 'admin-panel',
       className:
         'flex items-center gap-3 p-3 mt-4 text-charity-dark font-semibold bg-charity-light/80 hover:bg-charity-light rounded-lg transition border border-green-100',
     });
