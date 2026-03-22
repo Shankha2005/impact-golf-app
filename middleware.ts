@@ -31,9 +31,8 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: authData } = await supabase.auth.getUser();
+  const user = authData?.user ?? null;
 
   const isDashboardRoute = request.nextUrl.pathname.startsWith('/dashboard');
   const isAdminRoute = request.nextUrl.pathname.startsWith('/admin');
@@ -42,12 +41,17 @@ export async function middleware(request: NextRequest) {
 
   // Logged-in users: send admins → /admin, others → /dashboard (no manual /admin URL)
   if (isAuthRoute && !isSubscribePage && user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle();
-    const dest = profile?.role === 'admin' ? '/admin' : '/dashboard';
+    let dest = '/dashboard';
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+      dest = profile?.role === 'admin' ? '/admin' : '/dashboard';
+    } catch (e) {
+      console.error('[middleware] profile lookup', e);
+    }
     return NextResponse.redirect(new URL(dest, request.url));
   }
 
