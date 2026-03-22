@@ -55,6 +55,8 @@ To test the full capability of the platform, please follow these steps:
 1. **User Flow:** Sign up, select a charity, and complete a test Stripe checkout.
 2. **Score Logic:** Enter 6 distinct golf scores to verify that the oldest score is automatically dropped.
 3. **Admin Flow:** Log in with Admin credentials to access the hidden `/admin` dashboard.
+Admin Email: "thefinaltest@gmail.com"
+Admin Password: "123456789" 
 4. **Draw Simulation:** In the Admin Panel, run a "Simulation Draw" to verify the prize pool math before officially publishing.
 5. **Mobile Responsiveness:** View the user dashboard on a mobile viewport to verify the responsive sidebar and layout constraints.
 
