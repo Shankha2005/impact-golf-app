@@ -2,14 +2,27 @@ import { LayoutDashboard, UserCircle, Flag, Trophy, Shield } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server';
 import { AppShell, type AppShellNavItem } from '@/components/layout/AppShell';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
   const user = authData?.user ?? null;
+
   let isAdmin = false;
-  if (user) {
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
-    isAdmin = profile?.role === 'admin';
+  if (user?.id) {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+      isAdmin = profile?.role === 'admin';
+    } catch (e) {
+      console.error('[dashboard/layout] profile fetch', e);
+      isAdmin = false;
+    }
   }
 
   const navItems: AppShellNavItem[] = [

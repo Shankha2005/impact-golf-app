@@ -13,34 +13,61 @@ export default function ProfilePage() {
   const [charities, setCharities] = useState<Charity[]>([]);
   const [subscription, setSubscription] = useState<Sub>(null);
   const [charityPref, setCharityPref] = useState<CharityPref>(null);
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     async function load() {
-      const [meRes, charitiesRes] = await Promise.all([
-        fetch('/api/me'),
-        fetch('/api/charities'),
-      ]);
-      const me = meRes.ok ? await meRes.json() : null;
-      const list = charitiesRes.ok ? await charitiesRes.json() : [];
-      const safeList = Array.isArray(list) ? list : [];
+      try {
+        const [meRes, charitiesRes] = await Promise.all([
+          fetch('/api/me', { credentials: 'include' }),
+          fetch('/api/charities'),
+        ]);
 
-      if (me) {
-        setSubscription(me.subscription);
-        setCharityPref(me.charityPreference);
-        if (me.charityPreference) {
-          setCharityPercent(me.charityPreference.contribution_percent);
-          setSelectedCharityId(me.charityPreference.charity_id);
+        let me: {
+          subscription?: Sub;
+          charityPreference?: CharityPref;
+        } | null = null;
+        if (meRes.ok) {
+          try {
+            me = await meRes.json();
+          } catch {
+            me = null;
+          }
         }
-      }
-      setCharities(safeList);
 
-      const prefCharityId = me?.charityPreference?.charity_id;
-      if (prefCharityId) {
-        setSelectedCharityId(prefCharityId);
-      } else if (safeList.length > 0) {
-        setSelectedCharityId(safeList[0].id);
+        let list: unknown = [];
+        if (charitiesRes.ok) {
+          try {
+            list = await charitiesRes.json();
+          } catch {
+            list = [];
+          }
+        }
+        const safeList = Array.isArray(list) ? list : [];
+
+        setSubscription(me?.subscription ?? null);
+        setCharityPref(me?.charityPreference ?? null);
+        if (me?.charityPreference && typeof me.charityPreference.contribution_percent === 'number') {
+          setCharityPercent(me.charityPreference.contribution_percent);
+        }
+        if (me?.charityPreference?.charity_id) {
+          setSelectedCharityId(String(me.charityPreference.charity_id));
+        }
+        setCharities(
+          safeList
+            .filter((c): c is Charity => c != null && typeof c === 'object' && 'id' in c && 'name' in c)
+            .map((c) => ({ id: String(c.id), name: String(c.name) }))
+        );
+
+        const prefCharityId = me?.charityPreference?.charity_id;
+        if (prefCharityId) {
+          setSelectedCharityId(String(prefCharityId));
+        } else if (safeList.length > 0) {
+          const first = safeList[0] as { id?: string };
+          if (first?.id) setSelectedCharityId(String(first.id));
+        }
+      } catch (e) {
+        console.error('[profile load]', e);
       }
     }
     load();
@@ -58,11 +85,11 @@ export default function ProfilePage() {
         }),
       });
       if (!res.ok) throw new Error('Failed');
+      const name = charities.find((c) => c.id === selectedCharityId)?.name ?? '';
       setCharityPref({
-        ...charityPref!,
         charity_id: selectedCharityId,
         contribution_percent: charityPercent,
-        charities: { name: charities.find((c) => c.id === selectedCharityId)?.name ?? '' },
+        charities: { name },
       });
     } finally {
       setSaving(false);
@@ -71,8 +98,11 @@ export default function ProfilePage() {
 
   const isActive = subscription?.status === 'active';
   const renewDate = subscription?.current_period_end
-    ? new Date(subscription.current_period_end).toLocaleDateString()
+    ? new Date(String(subscription.current_period_end)).toLocaleDateString()
     : '—';
+
+  const planLabel =
+    subscription?.plan === 'yearly' ? 'Yearly ($120/yr)' : subscription?.plan === 'monthly' ? 'Monthly ($15/mo)' : '—';
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -92,7 +122,7 @@ export default function ProfilePage() {
         {subscription ? (
           <>
             <p className="text-gray-600">
-              <strong>Plan:</strong> {subscription.plan === 'yearly' ? 'Yearly ($120/yr)' : 'Monthly ($15/mo)'}
+              <strong>Plan:</strong> {planLabel}
             </p>
             <p className="text-gray-600 mt-1">
               <strong>Renews on:</strong> {renewDate}
@@ -132,7 +162,7 @@ export default function ProfilePage() {
               >
                 {charities.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {c.name || '—'}
                   </option>
                 ))}
               </select>

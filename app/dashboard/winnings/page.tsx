@@ -23,9 +23,9 @@ export default function WinningsPage() {
   useEffect(() => {
     fetch('/api/me/winners')
       .then(async (r) => {
-        const data = await r.json();
+        const data = await r.json().catch(() => null);
         if (!r.ok || !Array.isArray(data)) return [];
-        return data;
+        return data as Winner[];
       })
       .then(setWinners)
       .catch(() => setWinners([]));
@@ -33,8 +33,8 @@ export default function WinningsPage() {
 
   const totalWon = Array.isArray(winners)
     ? winners
-        .filter((w) => w.verification_status === 'approved')
-        .reduce((sum, w) => sum + moneyAmount(w.amount), 0)
+        .filter((w) => (w?.verification_status ?? '') === 'approved')
+        .reduce((sum, w) => sum + moneyAmount(w?.amount), 0)
     : 0;
 
   async function handleFileSelect() {
@@ -102,36 +102,37 @@ export default function WinningsPage() {
             >
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h2 className="font-bold text-gray-900">{w.match_type}</h2>
+                  <h2 className="font-bold text-gray-900">{w.match_type ?? '—'}</h2>
                   <p className="text-sm text-gray-500">
-                    Draw: {w.draws?.draw_date ? new Date(w.draws.draw_date).toLocaleDateString() : '—'}
+                    Draw:{' '}
+                    {w.draws?.draw_date ? new Date(String(w.draws.draw_date)).toLocaleDateString() : '—'}
                   </p>
                 </div>
-                <span className="text-xl font-bold text-charity">${formatUsd(w.amount)}</span>
+                <span className="text-xl font-bold text-charity">${formatUsd(w?.amount)}</span>
               </div>
 
               <div className="flex gap-2 flex-wrap">
                 <span
                   className={`px-2 py-1 text-xs rounded-full ${
-                    w.verification_status === 'approved'
+                    (w.verification_status ?? '') === 'approved'
                       ? 'bg-green-100 text-green-800'
-                      : w.verification_status === 'rejected'
+                      : (w.verification_status ?? '') === 'rejected'
                       ? 'bg-red-100 text-red-800'
                       : 'bg-yellow-100 text-yellow-800'
                   }`}
                 >
-                  {w.verification_status}
+                  {w.verification_status ?? '—'}
                 </span>
                 <span
                   className={`px-2 py-1 text-xs rounded-full ${
-                    w.payment_state === 'paid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'
+                    (w.payment_state ?? '') === 'paid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'
                   }`}
                 >
-                  {w.payment_state}
+                  {w.payment_state ?? '—'}
                 </span>
               </div>
 
-              {!w.proof_url && w.verification_status === 'pending' && (
+              {!w.proof_url && (w.verification_status ?? '') === 'pending' && (
                 <div className="mt-4">
                   <p className="text-sm text-gray-600 mb-2">
                     Upload a screenshot of your scores from the golf platform.

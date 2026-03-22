@@ -12,10 +12,14 @@ export default function ScoreEntry() {
   const [error, setError] = useState('');
 
   async function fetchScores() {
-    const res = await fetch(`/api/scores?t=${Date.now()}`, { cache: 'no-store' });
-    if (!res.ok) return;
-    const data = await res.json();
-    setRecentScores(Array.isArray(data) ? data : []);
+    try {
+      const res = await fetch(`/api/scores?t=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json().catch(() => null);
+      setRecentScores(Array.isArray(data) ? data : []);
+    } catch {
+      setRecentScores([]);
+    }
   }
 
   useEffect(() => {
