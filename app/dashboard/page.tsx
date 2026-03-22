@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { charityNameFromPreference } from '@/lib/charity-display';
 
 export default async function DashboardHome() {
   const supabase = await createClient();
@@ -8,17 +9,17 @@ export default async function DashboardHome() {
   if (!user) redirect('/auth/login');
 
   const [subRes, charityRes, participationsRes] = await Promise.all([
-    supabase.from('subscriptions').select('status, current_period_end').eq('user_id', user.id).single(),
+    supabase.from('subscriptions').select('status, current_period_end').eq('user_id', user.id).maybeSingle(),
     supabase
       .from('user_charity_preferences')
       .select('contribution_percent, charities(name)')
       .eq('user_id', user.id)
-      .single(),
+      .maybeSingle(),
     supabase.from('draw_participations').select('draw_id').eq('user_id', user.id),
   ]);
 
-  const drawsEntered = participationsRes.data?.length ?? 0;
-  const charityName = (charityRes.data as any)?.charities?.name ?? '—';
+  const drawsEntered = participationsRes.error ? 0 : (participationsRes.data?.length ?? 0);
+  const charityName = charityNameFromPreference(charityRes.data);
   const contributionPercent = charityRes.data?.contribution_percent ?? 10;
   const nextDraw = new Date();
   nextDraw.setDate(1);

@@ -46,7 +46,7 @@ export async function middleware(request: NextRequest) {
       .from('profiles')
       .select('role')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
     const dest = profile?.role === 'admin' ? '/admin' : '/dashboard';
     return NextResponse.redirect(new URL(dest, request.url));
   }

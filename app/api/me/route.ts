@@ -8,20 +8,20 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const [profileRes, subRes, charityRes] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', user.id).single(),
-      supabase.from('subscriptions').select('*').eq('user_id', user.id).single(),
+      supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
+      supabase.from('subscriptions').select('*').eq('user_id', user.id).maybeSingle(),
       supabase
         .from('user_charity_preferences')
         .select('charity_id, contribution_percent, charities(name)')
         .eq('user_id', user.id)
-        .single(),
+        .maybeSingle(),
     ]);
 
     return NextResponse.json({
       user: { id: user.id, email: user.email },
-      profile: profileRes.data,
-      subscription: subRes.data,
-      charityPreference: charityRes.data,
+      profile: profileRes.data ?? null,
+      subscription: subRes.data ?? null,
+      charityPreference: charityRes.data ?? null,
     });
   } catch {
     return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });

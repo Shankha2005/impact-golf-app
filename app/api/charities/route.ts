@@ -8,11 +8,12 @@ export async function GET() {
     const { data, error } = await supabase
       .from('charities')
       .select('*')
-      .order('is_featured', { ascending: false }); // Feature charities first [cite: 83]
+      .order('is_featured', { ascending: false })
+      .order('name', { ascending: true });
 
     if (error) throw error;
     return NextResponse.json(data ?? [], { status: 200 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch charities' }, { status: 500 });
   }
 }

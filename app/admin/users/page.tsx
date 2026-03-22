@@ -11,7 +11,7 @@ export default async function UserManagement() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/auth/login');
 
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
   if (profile?.role !== 'admin') redirect('/dashboard');
 
   const admin = createAdminClient();
@@ -23,7 +23,7 @@ export default async function UserManagement() {
         .from('subscriptions')
         .select('status, plan, current_period_end')
         .eq('user_id', u.id)
-        .single();
+        .maybeSingle();
       const { data: scoreRows } = await admin
         .from('scores')
         .select('id, score, date_played')
