@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateRandomDraw } from '@/services/draw-engine';
 import { calculatePrizePools } from '@/services/prize-calc';
+import { countUniqueWinningMatches } from '@/lib/match-count';
 
 function generateAlgorithmicNumbers(): number[] {
   // Weighted by common score distribution - placeholder
@@ -134,13 +135,11 @@ export async function POST(request: Request) {
     const winners4: { user_id: string; scores: number[] }[] = [];
     const winners3: { user_id: string; scores: number[] }[] = [];
 
-    const winningSet = new Set(winningNumbers);
-
     for (const uid of userIds) {
       const userScores = scoresByUser.get(uid) ?? [];
       if (userScores.length < 3) continue;
 
-      const matches = userScores.filter((s) => winningSet.has(s)).length;
+      const matches = countUniqueWinningMatches(userScores, winningNumbers);
       if (matches >= 5) winners5.push({ user_id: uid, scores: userScores });
       else if (matches >= 4) winners4.push({ user_id: uid, scores: userScores });
       else if (matches >= 3) winners3.push({ user_id: uid, scores: userScores });
