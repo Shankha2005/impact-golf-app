@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
+import { resolveUserIdAndPlan } from '@/lib/resolve-stripe-user';
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -30,8 +31,10 @@ export async function POST(request: Request) {
       const subRef = session.subscription;
       if (!subRef) break;
 
-      const userId = session.metadata?.user_id;
-      const plan = session.metadata?.plan === 'yearly' ? 'yearly' : 'monthly';
+      const userId =
+        session.metadata?.user_id ?? session.client_reference_id ?? undefined;
+      const plan =
+        session.metadata?.plan === 'yearly' ? 'yearly' : 'monthly';
       if (!userId) break;
 
       const subId = typeof subRef === 'string' ? subRef : subRef.id;
@@ -55,17 +58,16 @@ export async function POST(request: Request) {
 
     case 'customer.subscription.created': {
       const subscription = event.data.object as Stripe.Subscription;
-      const userId = subscription.metadata?.user_id;
-      const plan = subscription.metadata?.plan === 'yearly' ? 'yearly' : 'monthly';
-      if (!userId) break;
+      const resolved = await resolveUserIdAndPlan(subscription);
+      if (!resolved) break;
 
       await supabase.from('subscriptions').upsert(
         {
-          user_id: userId,
+          user_id: resolved.userId,
           stripe_subscription_id: subscription.id,
           stripe_customer_id: subscription.customer as string,
           status: subscription.status,
-          plan,
+          plan: resolved.plan,
           current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
           updated_at: new Date().toISOString(),
         },

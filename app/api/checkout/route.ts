@@ -14,12 +14,16 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { plan } = body; // 'monthly' | 'yearly'
+    const { plan } = body as { plan?: string }; // 'monthly' | 'yearly'
 
     const priceId = plan === 'yearly' ? YEARLY_PRICE_ID : MONTHLY_PRICE_ID;
     if (!priceId) {
       return NextResponse.json({ error: 'Stripe price not configured' }, { status: 500 });
     }
+
+    // Stripe metadata values must be strings.
+    const userIdStr = String(user.id);
+    const planStr = plan === 'yearly' ? 'yearly' : 'monthly';
 
     const { data: existingSub } = await supabase
       .from('subscriptions')
@@ -32,24 +36,40 @@ export async function POST(request: Request) {
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: user.email!,
-        metadata: { supabase_user_id: user.id },
+        metadata: {
+          supabase_user_id: userIdStr,
+          user_id: userIdStr,
+          plan: planStr,
+        },
       });
       customerId = customer.id;
+    } else {
+      await stripe.customers.update(customerId, {
+        metadata: {
+          supabase_user_id: userIdStr,
+          user_id: userIdStr,
+          plan: planStr,
+        },
+      });
     }
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
+      client_reference_id: userIdStr,
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${request.headers.get('origin')}/dashboard?subscription=success`,
       cancel_url: `${request.headers.get('origin')}/auth/subscribe?canceled=1`,
       metadata: {
-        user_id: user.id,
-        plan,
+        user_id: userIdStr,
+        plan: planStr,
       },
       subscription_data: {
-        metadata: { user_id: user.id, plan },
+        metadata: {
+          user_id: userIdStr,
+          plan: planStr,
+        },
       },
     });
 
