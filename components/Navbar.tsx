@@ -28,7 +28,7 @@ export default function Navbar() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+    supabase.auth.getUser().then(({ data }) => setUser(data?.user ?? null));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) =>
       setUser(session?.user ?? null)
     );

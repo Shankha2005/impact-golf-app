@@ -8,15 +8,17 @@ type Charity = {
   id: string;
   name: string;
   description: string | null;
-  image_url: string | null;
-  is_featured: boolean;
+  image_url?: string | null;
+  is_featured?: boolean | null;
   slug?: string | null;
 };
 
 export default function CharityDirectoryClient({
   charities,
+  loadError,
 }: {
   charities: Charity[];
+  loadError?: string | null;
 }) {
   const [search, setSearch] = useState('');
   const [filterFeatured, setFilterFeatured] = useState<'all' | 'featured'>('all');
@@ -32,7 +34,7 @@ export default function CharityDirectoryClient({
       );
     }
     if (filterFeatured === 'featured') {
-      list = list.filter((c) => c.is_featured);
+      list = list.filter((c) => Boolean(c.is_featured));
     }
     return list;
   }, [charities, search, filterFeatured]);
@@ -74,11 +76,20 @@ export default function CharityDirectoryClient({
         </div>
       </div>
 
+      {loadError ? (
+        <p className="text-center text-amber-800 bg-amber-50 border border-amber-100 rounded-xl py-4 px-4 mb-8 text-sm">
+          Could not load charities from the database: {loadError}. Check Supabase RLS (public SELECT on{' '}
+          <code className="bg-white px-1 rounded">charities</code>) and project env vars.
+        </p>
+      ) : null}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {filtered.length === 0 ? (
           <p className="col-span-full text-center text-gray-500 py-12">
             {charities.length === 0
-              ? 'No charities listed yet. Run the seed: supabase/seed.sql'
+              ? loadError
+                ? 'Fix the error above, or run supabase/seed.sql if the table is empty.'
+                : 'No charities listed yet. Run the seed: supabase/seed.sql'
               : 'No charities match your search.'}
           </p>
         ) : (
@@ -87,7 +98,7 @@ export default function CharityDirectoryClient({
               key={charity.id}
               className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition group"
             >
-              {charity.is_featured && (
+              {Boolean(charity.is_featured) && (
                 <span className="text-xs font-bold text-charity uppercase tracking-wider">
                   Featured
                 </span>

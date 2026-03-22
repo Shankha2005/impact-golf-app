@@ -5,7 +5,8 @@ import { charityNameFromPreference } from '@/lib/charity-display';
 
 export default async function DashboardHome() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: authData } = await supabase.auth.getUser();
+  const user = authData?.user ?? null;
   if (!user) redirect('/auth/login');
 
   const [subRes, charityRes, participationsRes] = await Promise.all([
@@ -19,8 +20,13 @@ export default async function DashboardHome() {
   ]);
 
   const drawsEntered = participationsRes.error ? 0 : (participationsRes.data?.length ?? 0);
-  const charityName = charityNameFromPreference(charityRes.data);
-  const contributionPercent = charityRes.data?.contribution_percent ?? 10;
+  const charityName = charityNameFromPreference(charityRes?.data ?? null);
+  const contributionPercent =
+    typeof charityRes?.data?.contribution_percent === 'number' ? charityRes.data.contribution_percent : 10;
+  const subscriptionLabel =
+    typeof subRes?.data?.status === 'string' && subRes.data.status.length > 0
+      ? subRes.data.status
+      : 'inactive';
   const nextDraw = new Date();
   nextDraw.setDate(1);
   nextDraw.setMonth(nextDraw.getMonth() + 1);
@@ -43,7 +49,7 @@ export default async function DashboardHome() {
         <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
           <h3 className="text-gray-500 text-sm font-medium">Subscription</h3>
           <p className="text-2xl font-bold text-gray-900 mt-2 capitalize">
-            {subRes.data?.status ?? 'Inactive'}
+            {subscriptionLabel}
           </p>
         </div>
       </div>

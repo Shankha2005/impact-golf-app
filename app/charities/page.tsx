@@ -1,14 +1,26 @@
 import { createClient } from '@/lib/supabase/server';
 import CharityDirectoryClient from './CharityDirectoryClient';
 
+/** Always fetch fresh rows (matches homepage); avoids stale static HTML with an empty list on Vercel. */
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function CharityDirectory() {
   const supabase = await createClient();
-  const { data: charities } = await supabase
-    .from('charities')
-    .select('id, name, description, image_url, is_featured, slug')
-    .order('is_featured', { ascending: false });
 
-  const list = charities ?? [];
+  // Keep the select aligned with `app/page.tsx` so the same RLS/columns work everywhere.
+  // Optional columns (image_url, slug) are omitted here so a partial schema never returns PGRST204.
+  const { data, error } = await supabase
+    .from('charities')
+    .select('id, name, description, is_featured')
+    .order('is_featured', { ascending: false })
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.error('[charities/page]', error.message, error.code, error.details);
+  }
+
+  const list = Array.isArray(data) ? data : [];
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-16">
@@ -22,7 +34,7 @@ export default async function CharityDirectory() {
         </p>
       </div>
 
-      <CharityDirectoryClient charities={list} />
+      <CharityDirectoryClient charities={list} loadError={error?.message ?? null} />
     </div>
   );
 }
