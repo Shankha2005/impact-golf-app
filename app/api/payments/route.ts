@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       const resolved = await resolveUserIdAndPlan(subscription);
       if (!resolved) break;
 
-      await supabase.from('subscriptions').upsert(
+      const { error: supabaseError } = await supabase.from('subscriptions').upsert(
         {
           user_id: resolved.userId,
           stripe_subscription_id: subscription.id,
@@ -73,6 +73,12 @@ export async function POST(request: Request) {
         },
         { onConflict: 'user_id' }
       );
+
+      if (supabaseError) {
+        console.error("SUPABASE UPSERT ERROR:", supabaseError);
+      } else {
+        console.log("Successfully inserted subscription for user:", resolved.userId);
+      }
       break;
     }
 
